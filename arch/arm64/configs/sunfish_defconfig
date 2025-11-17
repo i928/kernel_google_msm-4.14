@@ -779,3 +779,6 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
 # SUS_SU is for kprobe-hooked KSU only; unsupported on non-GKI manual hooks:
 # CONFIG_KSU_SUSFS_SUS_SU is not set
 # <<< KernelSU-Next + SUSFS <<<
+
+# Wireguard
+CONFIG_WIREGUARD=y
