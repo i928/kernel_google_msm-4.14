@@ -708,11 +708,9 @@ void susfs_try_umount(uid_t uid) {
 
 /* spoof_uname */
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-static DEFINE_MUTEX(susfs_mutex_lock_set_uname);
-static struct st_susfs_uname my_uname;
-static void susfs_my_uname_init(void) {
-	memset(&my_uname, 0, sizeof(my_uname));
-}
+static struct st_susfs_uname my_uname = {0};
+static bool is_susfs_uname_set = false;
+static DEFINE_SEQLOCK(susfs_uname_seqlock);
 
 void susfs_set_uname(void __user **user_info) {
 	struct st_susfs_uname info = {0};
@@ -722,7 +720,7 @@ void susfs_set_uname(void __user **user_info) {
 		goto out_copy_to_user;
 	}
 
-	mutex_lock(&susfs_mutex_lock_set_uname);
+	write_seqlock(&susfs_uname_seqlock);
 	if (!strcmp(info.release, "default")) {
 		strncpy(my_uname.release, utsname()->release, __NEW_UTS_LEN);
 	} else {
@@ -733,7 +731,8 @@ void susfs_set_uname(void __user **user_info) {
 	} else {
 		strncpy(my_uname.version, info.version, __NEW_UTS_LEN);
 	}
-	mutex_unlock(&susfs_mutex_lock_set_uname);
+	is_susfs_uname_set = true;
+	write_sequnlock(&susfs_uname_seqlock);
 	SUSFS_LOGI("setting spoofed release: '%s', version: '%s'\n",
 				my_uname.release, my_uname.version);
 	info.err = 0;
@@ -745,10 +744,15 @@ out_copy_to_user:
 }
 
 void susfs_spoof_uname(struct new_utsname* tmp) {
-	if (unlikely(my_uname.release[0] == '\0' || mutex_is_locked(&susfs_mutex_lock_set_uname)))
-		return;
-	strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
-	strncpy(tmp->version, my_uname.version, __NEW_UTS_LEN);
+	unsigned seq;
+
+	do {
+		seq = read_seqbegin(&susfs_uname_seqlock);
+		if (is_susfs_uname_set) {
+			strncpy(tmp->release, my_uname.release, __NEW_UTS_LEN);
+			strncpy(tmp->version, my_uname.version, __NEW_UTS_LEN);
+		}
+	} while (read_seqretry(&susfs_uname_seqlock, seq));
 }
 #endif // #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 
@@ -1561,9 +1565,6 @@ static void susfs_run_extra_works(struct work_struct *work) {
 
 /* susfs_init */
 void susfs_init(void) {
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-	susfs_my_uname_init();
-#endif
 	SUSFS_LOGI("Initializing susfs_extra_works\n");
 	INIT_WORK(&susfs_extra_works, susfs_run_extra_works);
 	SUSFS_LOGI("susfs is initialized! version: " SUSFS_VERSION " \n");
