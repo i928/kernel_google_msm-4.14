@@ -1652,6 +1652,12 @@ static struct dentry *lookup_dcache(const struct qstr *name,
 			return ERR_PTR(error);
 		}
 	}
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	if (dentry && dentry->d_inode && unlikely(test_bit(AS_FLAGS_SUS_PATH, &dentry->d_inode->i_state)) && likely(susfs_is_current_proc_umounted_app())) {
+		dput(dentry);
+		return ERR_PTR(-ENOENT);
+	}
+#endif
 	return dentry;
 }
 
