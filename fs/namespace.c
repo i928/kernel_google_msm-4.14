@@ -38,11 +38,6 @@
 extern bool susfs_is_current_ksu_domain(void);
 extern bool susfs_is_current_zygote_domain(void);
 
-static DEFINE_IDA(susfs_mnt_id_ida);
-static DEFINE_IDA(susfs_mnt_group_ida);
-static int susfs_mnt_id_start = DEFAULT_KSU_MNT_ID;
-static int susfs_mnt_group_start = DEFAULT_KSU_MNT_GROUP_ID;
-
 #define CL_ZYGOTE_COPY_MNT_NS BIT(24) /* used by copy_mnt_ns() */
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 #endif
@@ -130,17 +125,28 @@ static inline struct hlist_head *mp_hash(struct dentry *dentry)
 }
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-// Our own mnt_alloc_id() that assigns mnt_id starting from DEFAULT_KSU_MNT_ID
+// Our own mnt_alloc_id() that assigns mnt_id starting from DEFAULT_KSU_MNT_ID.
+// Re-uses the shared mnt_id_ida pool instead of a separate one (matches
+// upstream's "Re-use mnt_id_ida and mnt_group_ida" optimization), so we no
+// longer need to special-case freeing a KSU-domain-created mnt_id in
+// mnt_free_id() -- it's just a normal ida_free(&mnt_id_ida, ...) now.
+//
+// Deliberately uses the same ida_pre_get()+mnt_id_lock locking pattern as
+// mnt_alloc_id() above (the old API), not ida_alloc_min()/ida_alloc_range()
+// (the new API) -- ida_alloc_range() takes its own internal lock on the
+// ida's radix tree, while ida_get_new_above() (what mnt_alloc_id() already
+// uses on this same pool) takes none at all and relies entirely on the
+// caller's external lock. Mixing the two locking styles on the same shared
+// pool would mean two uncoordinated locks guarding the same tree -- a real
+// race. Keeping both allocators on the same lock avoids that.
 static int susfs_mnt_alloc_id(struct mount *mnt)
 {
 	int res;
 
 retry:
-	ida_pre_get(&susfs_mnt_id_ida, GFP_KERNEL);
+	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
 	spin_lock(&mnt_id_lock);
-	res = ida_get_new_above(&susfs_mnt_id_ida, susfs_mnt_id_start, &mnt->mnt_id);
-	if (!res)
-		susfs_mnt_id_start = mnt->mnt_id + 1;
+	res = ida_get_new_above(&mnt_id_ida, DEFAULT_KSU_MNT_ID, &mnt->mnt_id);
 	spin_unlock(&mnt_id_lock);
 	if (res == -EAGAIN)
 		goto retry;
@@ -170,25 +176,22 @@ static void mnt_free_id(struct mount *mnt)
 	int id = mnt->mnt_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
-	// We should first check the 'mnt->mnt.susfs_mnt_id_backup', see if it is DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE
-	// if so, these mnt_id were not assigned by mnt_alloc_id() so we don't need to free it.
-	if (unlikely(mnt_id_backup == DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE)) {
+	// If this mount's mnt_id was reused directly from another mount (the
+	// KSU-domain unshare case, see clone_mnt()), it was never allocated
+	// from any ida -- the original owner mount will free it. Don't touch
+	// the ida here at all.
+	if (unlikely(mnt->mnt.mnt_flags & VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT)) {
 		return;
 	}
-	// Now we can check if its mnt_id is sus
-	if (unlikely(mnt->mnt_id >= DEFAULT_KSU_MNT_ID)) {
-		spin_lock(&mnt_id_lock);
-		ida_remove(&susfs_mnt_id_ida, id);
-		if (susfs_mnt_id_start > id)
-			susfs_mnt_id_start = id;
-		spin_unlock(&mnt_id_lock);
-		return;
-	}
-	// Lastly if 'mnt->mnt.susfs_mnt_id_backup' is not 0, then it contains a backup origin mnt_id
-	// so we free it in the original way
-	if (likely(mnt_id_backup)) {
-		// If mnt->mnt.susfs_mnt_id_backup is not zero, it means mnt->mnt_id is spoofed,
-		// so here we return the original mnt_id for being freed.
+	// A KSU-domain-created (non-unshare) mount now lives in the same
+	// mnt_id_ida pool as everything else (susfs_mnt_alloc_id() above),
+	// so it no longer needs a separate free path here -- falls through
+	// to the plain ida_remove(&mnt_id_ida, id) below like any other mount.
+
+	// If 'mnt->mnt.susfs_mnt_id_backup' is non-zero (and not the marker
+	// above), it holds a zygote-reordered mount's original real mnt_id --
+	// free that instead of the fake sequential id currently in mnt->mnt_id.
+	if (unlikely(mnt_id_backup)) {
 		spin_lock(&mnt_id_lock);
 		ida_remove(&mnt_id_ida, mnt_id_backup);
 		if (mnt_id_start > mnt_id_backup)
@@ -214,16 +217,17 @@ static int mnt_alloc_group_id(struct mount *mnt)
 	int res;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	// Re-uses the shared mnt_group_ida pool instead of a separate one
+	// (matches upstream's "Re-use mnt_id_ida and mnt_group_ida"
+	// optimization). Both this pool and mnt_id_ida are protected by
+	// namespace_sem at the caller level, not a dedicated ida lock, so
+	// this is safe to merge in.
 	if (mnt->mnt_id >= DEFAULT_KSU_MNT_ID) {
-		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
+		if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
 			return -ENOMEM;
-		// If so, assign a sus mnt_group id DEFAULT_KSU_MNT_GROUP_ID from susfs_mnt_group_ida
-		res = ida_get_new_above(&susfs_mnt_group_ida,
-					susfs_mnt_group_start,
+		return ida_get_new_above(&mnt_group_ida,
+					DEFAULT_KSU_MNT_GROUP_ID,
 					&mnt->mnt_group_id);
-		if (!res)
-			susfs_mnt_group_start = mnt->mnt_group_id + 1;
-		return res;
 	}
 #endif
 	if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
@@ -244,17 +248,9 @@ static int mnt_alloc_group_id(struct mount *mnt)
 void mnt_release_group_id(struct mount *mnt)
 {
 	int id = mnt->mnt_group_id;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// If mnt->mnt_group_id >= DEFAULT_KSU_MNT_GROUP_ID, it means 'mnt' is also sus mount,
-	// then we free the mnt->mnt_group_id from susfs_mnt_group_ida
-	if (id >= DEFAULT_KSU_MNT_GROUP_ID) {
-		ida_remove(&susfs_mnt_group_ida, id);
-		if (susfs_mnt_group_start > id)
-			susfs_mnt_group_start = id;
-		mnt->mnt_group_id = 0;
-		return;
-	}
-#endif
+	// KSU-domain sus mount group ids now live in the same mnt_group_ida
+	// pool as everything else (mnt_alloc_group_id() above), so this no
+	// longer needs a separate free path.
 	ida_remove(&mnt_group_ida, id);
 	if (mnt_group_start > id)
 		mnt_group_start = id;
@@ -1234,6 +1230,7 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	bool is_current_ksu_domain = susfs_is_current_ksu_domain();
 	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
+	bool is_mnt_ksu_unshared = false;
 
 	/* - It is very important that we need to use CL_COPY_MNT_NS to identify whether 
 	 *   the clone is a copy_tree() or single mount like called by __do_loopback()
@@ -1250,10 +1247,13 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 			mnt = alloc_vfsmnt(old->mnt_devname, true, 0);
 			goto bypass_orig_flow;
 		}
-		// if it is doing unshare
+		// if it is doing unshare -- reuses old->mnt_id directly (no ida
+		// involved), so mark it with VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT
+		// (set below, once mnt->mnt.mnt_flags exists) so mnt_free_id()
+		// knows not to free it -- the original mount still owns that id.
 		mnt = alloc_vfsmnt(old->mnt_devname, true, old->mnt_id);
 		if (mnt) {
-			mnt->mnt.susfs_mnt_id_backup = DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE;
+			is_mnt_ksu_unshared = true;
 		}
 		goto bypass_orig_flow;
 	}
@@ -1301,6 +1301,11 @@ bypass_orig_flow:
 
 	mnt->mnt.mnt_flags = old->mnt.mnt_flags;
 	mnt->mnt.mnt_flags &= ~(MNT_WRITE_HOLD|MNT_MARKED|MNT_INTERNAL);
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	if (unlikely(is_mnt_ksu_unshared)) {
+		mnt->mnt.mnt_flags |= VFSMOUNT_MNT_FLAGS_KSU_UNSHARED_MNT;
+	}
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	/* Don't allow unprivileged users to change mount flags */
 	if (flag & CL_UNPRIVILEGED) {
 		mnt->mnt.mnt_flags |= MNT_LOCK_ATIME;
