@@ -2,6 +2,7 @@
 #ifndef __LINUX_MAGIC_H__
 #define __LINUX_MAGIC_H__
 
+#define EROFS_SUPER_MAGIC_V1   0xE0F5E1E2
 #define ADFS_SUPER_MAGIC	0xadf5
 #define AFFS_SUPER_MAGIC	0xadff
 #define AFS_SUPER_MAGIC                0x5346414F

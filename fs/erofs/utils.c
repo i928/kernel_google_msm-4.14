@@ -1,25 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2018 HUAWEI, Inc.
- *             http://www.huawei.com/
- * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *             https://www.huawei.com/
  */
 #include "internal.h"
 #include <linux/pagevec.h>
-static DEFINE_SPINLOCK(erofs_workstn_lock);
+#include <linux/xarray.h>
 
-/* 4.14 compat shims */
-#ifndef lru_to_page
-#define lru_to_page(_head) (list_entry((_head)->prev, struct page, lru))
-#endif
-
-#define xa_lock(tree)   spin_lock(&erofs_workstn_lock)
-#define xa_unlock(tree) spin_unlock(&erofs_workstn_lock)
-#define xa_tag_pointer(p, tag)   ((void *)((unsigned long)(p) | (tag)))
-#define xa_untag_pointer(p)      ((void *)((unsigned long)(p) & ~1UL))
-#define xa_pointer_tag(p)        ((unsigned long)(p) & 1UL)
-
-struct page *erofs_allocpage(struct list_head *pool, gfp_t gfp, bool nofail)
+struct page *erofs_allocpage(struct list_head *pool, gfp_t gfp)
 {
 	struct page *page;
 
@@ -28,22 +16,10 @@ struct page *erofs_allocpage(struct list_head *pool, gfp_t gfp, bool nofail)
 		DBG_BUGON(page_ref_count(page) != 1);
 		list_del(&page->lru);
 	} else {
-		page = alloc_pages(gfp | (nofail ? __GFP_NOFAIL : 0), 0);
+		page = alloc_page(gfp);
 	}
 	return page;
 }
-
-#if (EROFS_PCPUBUF_NR_PAGES > 0)
-static struct {
-	u8 data[PAGE_SIZE * EROFS_PCPUBUF_NR_PAGES];
-} ____cacheline_aligned_in_smp erofs_pcpubuf[NR_CPUS];
-
-void *erofs_get_pcpubuf(unsigned int pagenr)
-{
-	preempt_disable();
-	return &erofs_pcpubuf[smp_processor_id()].data[pagenr * PAGE_SIZE];
-}
-#endif
 
 #ifdef CONFIG_EROFS_FS_ZIP
 /* global shrink count (for all mounted EROFS instances) */
@@ -71,7 +47,7 @@ repeat:
 }
 
 struct erofs_workgroup *erofs_find_workgroup(struct super_block *sb,
-					     pgoff_t index, bool *tag)
+					     pgoff_t index)
 {
 	struct erofs_sb_info *sbi = EROFS_SB(sb);
 	struct erofs_workgroup *grp;
@@ -80,9 +56,6 @@ repeat:
 	rcu_read_lock();
 	grp = radix_tree_lookup(&sbi->workstn_tree, index);
 	if (grp) {
-		*tag = xa_pointer_tag(grp);
-		grp = xa_untag_pointer(grp);
-
 		if (erofs_workgroup_get(grp)) {
 			/* prefer to relax rcu read side */
 			rcu_read_unlock();
@@ -96,8 +69,7 @@ repeat:
 }
 
 int erofs_register_workgroup(struct super_block *sb,
-			     struct erofs_workgroup *grp,
-			     bool tag)
+			     struct erofs_workgroup *grp)
 {
 	struct erofs_sb_info *sbi;
 	int err;
@@ -114,8 +86,6 @@ int erofs_register_workgroup(struct super_block *sb,
 
 	sbi = EROFS_SB(sb);
 	xa_lock(&sbi->workstn_tree);
-
-	grp = xa_tag_pointer(grp, tag);
 
 	/*
 	 * Bump up reference count before making this workgroup
@@ -154,15 +124,8 @@ int erofs_workgroup_put(struct erofs_workgroup *grp)
 	return count;
 }
 
-static void erofs_workgroup_unfreeze_final(struct erofs_workgroup *grp)
-{
-	erofs_workgroup_unfreeze(grp, 0);
-	__erofs_workgroup_free(grp);
-}
-
 static bool erofs_try_to_release_workgroup(struct erofs_sb_info *sbi,
-					   struct erofs_workgroup *grp,
-					   bool cleanup)
+					   struct erofs_workgroup *grp)
 {
 	/*
 	 * If managed cache is on, refcount of workgroups
@@ -188,20 +151,16 @@ static bool erofs_try_to_release_workgroup(struct erofs_sb_info *sbi,
 	 * however in order to avoid some race conditions, add a
 	 * DBG_BUGON to observe this in advance.
 	 */
-	DBG_BUGON(xa_untag_pointer(radix_tree_delete(&sbi->workstn_tree,
-						     grp->index)) != grp);
+	DBG_BUGON(radix_tree_delete(&sbi->workstn_tree, grp->index) != grp);
 
-	/*
-	 * If managed cache is on, last refcount should indicate
-	 * the related workstation.
-	 */
-	erofs_workgroup_unfreeze_final(grp);
+	/* last refcount should be connected with its managed pslot.  */
+	erofs_workgroup_unfreeze(grp, 0);
+	__erofs_workgroup_free(grp);
 	return true;
 }
 
 static unsigned long erofs_shrink_workstation(struct erofs_sb_info *sbi,
-					      unsigned long nr_shrink,
-					      bool cleanup)
+					      unsigned long nr_shrink)
 {
 	pgoff_t first_index = 0;
 	void *batch[PAGEVEC_SIZE];
@@ -215,12 +174,12 @@ repeat:
 				       batch, first_index, PAGEVEC_SIZE);
 
 	for (i = 0; i < found; ++i) {
-		struct erofs_workgroup *grp = xa_untag_pointer(batch[i]);
+		struct erofs_workgroup *grp = batch[i];
 
 		first_index = grp->index + 1;
 
 		/* try to shrink each valid workgroup */
-		if (!erofs_try_to_release_workgroup(sbi, grp, cleanup))
+		if (!erofs_try_to_release_workgroup(sbi, grp))
 			continue;
 
 		++freed;
@@ -257,7 +216,8 @@ void erofs_shrinker_unregister(struct super_block *sb)
 	struct erofs_sb_info *const sbi = EROFS_SB(sb);
 
 	mutex_lock(&sbi->umount_mutex);
-	erofs_shrink_workstation(sbi, ~0UL, true);
+	/* clean up all remaining workgroups in memory */
+	erofs_shrink_workstation(sbi, ~0UL);
 
 	spin_lock(&erofs_sb_list_lock);
 	list_del(&sbi->list);
@@ -306,7 +266,7 @@ static unsigned long erofs_shrink_scan(struct shrinker *shrink,
 		spin_unlock(&erofs_sb_list_lock);
 		sbi->shrinker_run_no = run_no;
 
-		freed += erofs_shrink_workstation(sbi, nr, false);
+		freed += erofs_shrink_workstation(sbi, nr - freed);
 
 		spin_lock(&erofs_sb_list_lock);
 		/* Get the next list element before we move this one */
@@ -342,4 +302,3 @@ void erofs_exit_shrinker(void)
 	unregister_shrinker(&erofs_shrinker_info);
 }
 #endif	/* !CONFIG_EROFS_FS_ZIP */
-
