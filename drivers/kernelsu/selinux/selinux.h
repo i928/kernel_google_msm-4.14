@@ -71,6 +71,7 @@ void susfs_set_zygote_sid(void);
 bool susfs_is_current_zygote_domain(void);
 void susfs_set_ksu_sid(void);
 bool susfs_is_current_ksu_domain(void);
+void susfs_set_kernel_sid(void);
 void susfs_set_init_sid(void);
 bool susfs_is_current_init_domain(void);
 void susfs_set_priv_app_sid(void);

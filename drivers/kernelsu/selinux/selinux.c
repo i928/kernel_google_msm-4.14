@@ -249,8 +249,10 @@ bool is_init(const struct cred *cred)
 #define KERNEL_INIT_DOMAIN "u:r:init:s0"
 #define KERNEL_ZYGOTE_DOMAIN "u:r:zygote:s0"
 #define KERNEL_PRIV_APP_DOMAIN "u:r:priv_app:s0:c512,c768"
+#define KERNEL_DOMAIN "u:r:kernel:s0"
 
 u32 susfs_ksu_sid = 0;
+u32 susfs_kernel_sid = 0;
 u32 susfs_init_sid = 0;
 u32 susfs_zygote_sid = 0;
 u32 susfs_priv_app_sid = 0;
@@ -324,6 +326,11 @@ void susfs_set_ksu_sid(void)
 
 bool susfs_is_current_ksu_domain(void) {
     return unlikely(current_sid() == susfs_ksu_sid);
+}
+
+void susfs_set_kernel_sid(void)
+{
+    susfs_set_sid(KERNEL_DOMAIN, &susfs_kernel_sid);
 }
 
 void susfs_set_init_sid(void)
