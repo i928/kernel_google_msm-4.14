@@ -185,8 +185,6 @@ do_umount:
 
     ksu_handle_extra_susfs_work();
 
-    susfs_set_current_proc_umounted();
-
     return 0;
 }
 

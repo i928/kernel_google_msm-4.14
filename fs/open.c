@@ -33,6 +33,7 @@
 #include <linux/compat.h>
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 #include <linux/susfs_def.h>
+#include <linux/susfs.h>
 #endif
 
 #include "internal.h"
@@ -1084,10 +1085,6 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
-#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-extern struct filename *susfs_open_redirect_spoof_do_sys_openat(struct inode *inode);
-#endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
@@ -1095,7 +1092,7 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	struct filename *tmp;
 
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-	struct filename *fake_filename = NULL;
+	struct filename *redirected_path = NULL;
 	bool is_inode_open_redirect = false;
 #endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 
@@ -1116,15 +1113,13 @@ retry:
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 		if (!is_inode_open_redirect && f && !IS_ERR(f)) {
 			struct inode *inode = file_inode(f);
-			if (SUSFS_IS_INODE_OPEN_REDIRECT_WITHOUT_UID_CHECK(inode)) {
-				fake_filename = susfs_open_redirect_spoof_do_sys_openat(inode);
-				if (fake_filename && !IS_ERR(fake_filename)) {
-					is_inode_open_redirect = true;
-					filp_close(f, NULL);
-					putname(tmp);
-					tmp = fake_filename;
-					goto retry;
-				}
+			redirected_path = susfs_get_redirected_path(inode->i_ino);
+			if (redirected_path && !IS_ERR(redirected_path)) {
+				is_inode_open_redirect = true;
+				filp_close(f, NULL);
+				putname(tmp);
+				tmp = redirected_path;
+				goto retry;
 			}
 		}
 #endif // #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT

@@ -120,6 +120,8 @@ void seq_putc(struct seq_file *m, char c);
 void seq_puts(struct seq_file *m, const char *s);
 void seq_put_decimal_ull(struct seq_file *m, const char *delimiter,
 			 unsigned long long num);
+void seq_put_decimal_ull_width(struct seq_file *m, const char *delimiter,
+			       unsigned long long num, unsigned int width);
 void seq_put_decimal_ll(struct seq_file *m, const char *delimiter, long long num);
 void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
 		    unsigned long long v, unsigned int width);

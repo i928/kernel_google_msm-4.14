@@ -89,84 +89,84 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
     if (magic2 == SUSFS_MAGIC && current_uid().val == 0) {
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
         if (cmd == CMD_SUSFS_ADD_SUS_PATH) {
-            susfs_add_sus_path(arg);
+            susfs_add_sus_path((struct st_susfs_sus_path __user *)arg);
             return 0;
         }
         if (cmd == CMD_SUSFS_ADD_SUS_PATH_LOOP) {
-            susfs_add_sus_path_loop(arg);
+            susfs_set_i_state_on_external_dir((char __user *)arg, cmd);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-        if (cmd == CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS) {
-            susfs_set_hide_sus_mnts_for_non_su_procs(arg);
+        if (cmd == CMD_SUSFS_ADD_SUS_MOUNT) {
+            susfs_add_sus_mount((struct st_susfs_sus_mount __user *)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
         if (cmd == CMD_SUSFS_ADD_SUS_KSTAT) {
-            susfs_add_sus_kstat(arg);
+            susfs_add_sus_kstat((struct st_susfs_sus_kstat __user *)arg);
             return 0;
         }
         if (cmd == CMD_SUSFS_UPDATE_SUS_KSTAT) {
-            susfs_update_sus_kstat(arg);
+            susfs_update_sus_kstat((struct st_susfs_sus_kstat __user *)arg);
             return 0;
         }
         if (cmd == CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY) {
-            susfs_add_sus_kstat(arg);
+            susfs_add_sus_kstat((struct st_susfs_sus_kstat __user *)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
         if (cmd == CMD_SUSFS_ADD_TRY_UMOUNT) {
-            susfs_add_try_umount(arg);
+            susfs_add_try_umount((struct st_susfs_try_umount __user *)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 #ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
         if (cmd == CMD_SUSFS_SET_UNAME) {
-            susfs_set_uname(arg);
+            susfs_set_uname((struct st_susfs_uname __user *)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
         if (cmd == CMD_SUSFS_ENABLE_LOG) {
-            susfs_enable_log(arg);
+            susfs_set_log((bool)(unsigned long)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
 #ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
         if (cmd == CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG) {
-            susfs_set_cmdline_or_bootconfig(arg);
+            susfs_set_cmdline_or_bootconfig((char __user *)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
 #ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
         if (cmd == CMD_SUSFS_ADD_OPEN_REDIRECT) {
-            susfs_add_open_redirect(arg);
+            susfs_add_open_redirect((struct st_susfs_open_redirect __user *)arg);
             return 0;
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 #ifdef CONFIG_KSU_SUSFS_SUS_MAP
         if (cmd == CMD_SUSFS_ADD_SUS_MAP) {
-            susfs_add_sus_map(arg);
+            susfs_add_sus_map((struct st_susfs_sus_map __user *)arg);
             return 0;
         }
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
         if (cmd == CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING) {
-            susfs_set_avc_log_spoofing(arg);
+            susfs_set_avc_log_spoofing((bool)(unsigned long)arg);
             return 0;
         }
         if (cmd == CMD_SUSFS_SHOW_ENABLED_FEATURES) {
-            susfs_get_enabled_features(arg);
+            susfs_get_enabled_features((char __user *)arg, PAGE_SIZE);
             return 0;
         }
         if (cmd == CMD_SUSFS_SHOW_VARIANT) {
-            susfs_show_variant(arg);
+            copy_to_user(arg, SUSFS_VARIANT, strlen(SUSFS_VARIANT) + 1);
             return 0;
         }
         if (cmd == CMD_SUSFS_SHOW_VERSION) {
-            susfs_show_version(arg);
+            copy_to_user(arg, SUSFS_VERSION, strlen(SUSFS_VERSION) + 1);
             return 0;
         }
         return 0;
