@@ -2232,6 +2232,17 @@ static int link_path_walk(const char *name, struct nameidata *nd)
 		u64 hash_len;
 		int type;
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		if (nd->path.dentry->d_inode && unlikely(test_bit(AS_FLAGS_SUS_PATH, &nd->path.dentry->d_inode->i_state)) && likely(susfs_is_current_proc_umounted_app())) {
+			// The starting/current directory is sus_path'd -- must check this before
+			// may_lookup() runs, otherwise may_lookup() can leak an errno other than
+			// -ENOENT (e.g. -EACCES) for the very first component of the walk, before
+			// our end-of-loop check (which only fires after walk_component() resolves
+			// a component) ever gets a chance to run.
+			return -ENOENT;
+		}
+#endif
+
 		err = may_lookup(nd);
 		if (err)
 			return err;
