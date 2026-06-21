@@ -829,9 +829,6 @@ static ssize_t mem_rw(struct file *file, char __user *buf,
 	ssize_t copied;
 	char *page;
 	unsigned int flags;
-#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-	struct vm_area_struct *vma;
-#endif
 
 	if (!mm)
 		return 0;
@@ -848,16 +845,6 @@ static ssize_t mem_rw(struct file *file, char __user *buf,
 
 	while (count > 0) {
 		size_t this_len = min_t(size_t, count, PAGE_SIZE);
-#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-		vma = find_vma(mm, addr);
-		if (vma && vma->vm_file) {
-			struct inode *inode = file_inode(vma->vm_file);
-			if (SUSFS_IS_INODE_SUS_MAP(inode)) {
-				copied = write ? -EFAULT : -EIO;
-				break;
-			}
-		}
-#endif
 		if (write && copy_from_user(page, buf, this_len)) {
 			copied = -EFAULT;
 			break;
