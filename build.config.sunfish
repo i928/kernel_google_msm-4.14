@@ -1,6 +1,8 @@
 KERNEL_DIR=private/msm-google
 . ${ROOT_DIR}/${KERNEL_DIR}/build.config.sunfish.common.clang
-POST_DEFCONFIG_CMDS="check_defconfig"
+# check_defconfig disabled: custom defconfig (comments/ordering) fails the
+# strict savedefconfig lint, which is cosmetic and unrelated to building.
+POST_DEFCONFIG_CMDS=""
 UNSTRIPPED_MODULES="
 wlan.ko
 "

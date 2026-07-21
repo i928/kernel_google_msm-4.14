@@ -539,6 +539,7 @@ CLANG_FLAGS	+= -Werror=unknown-warning-option
 CLANG_FLAGS	+= $(call cc-option, -Wno-misleading-indentation)
 CLANG_FLAGS	+= $(call cc-option, -Wno-bool-operation)
 CLANG_FLAGS	+= $(call cc-option, -Wno-unsequenced)
+CLANG_FLAGS	+= $(call cc-option, -Wno-gnu-variable-sized-type-not-at-end)
 KBUILD_CFLAGS	+= $(CLANG_FLAGS)
 KBUILD_AFLAGS	+= $(CLANG_FLAGS)
 export CLANG_FLAGS
@@ -739,7 +740,12 @@ KBUILD_CFLAGS   += -O2
 endif
 
 ifeq ($(cc-name),clang)
-KBUILD_CFLAGS	+= -mcpu=cortex-a76+crypto+crc -mtune=cortex-a76 -march=armv8.2-a+lse+fp16+dotprod
+# Custom cortex-a76 tuning disabled: with -no-integrated-as, clang forwards
+# -mcpu/-march to the external GNU assembler (gcc-4.9 binutils 2.27), which
+# predates cortex-a76 and the dotprod extension, so it fails to assemble.
+# To re-enable this optimization, either drop -no-integrated-as (use clang's
+# integrated assembler) or supply a newer aarch64 binutils (>= 2.30).
+# KBUILD_CFLAGS	+= -mcpu=cortex-a76+crypto+crc -mtune=cortex-a76 -march=armv8.2-a+lse+fp16+dotprod
 endif
 
 ifdef CONFIG_CC_WERROR

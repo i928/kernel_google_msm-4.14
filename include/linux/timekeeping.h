@@ -121,6 +121,16 @@ static inline u64 ktime_get_boottime_ns(void)
 	return ktime_to_ns(ktime_get_boottime());
 }
 
+/*
+ * Legacy alias: mainline renamed ktime_get_boot_ns() -> ktime_get_boottime_ns().
+ * Restored so out-of-tree modules (e.g. qcacld-3.0) that still call the old
+ * name continue to build. Same semantics.
+ */
+static inline u64 ktime_get_boot_ns(void)
+{
+	return ktime_get_boottime_ns();
+}
+
 static inline u64 ktime_get_clocktai_ns(void)
 {
 	return ktime_to_ns(ktime_get_clocktai());
