@@ -852,3 +852,12 @@ CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
 CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
 CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
 CONFIG_KSU_SUSFS_ENABLE_LOG=y
+
+# Restored from sunfish-ksunext-susfs when moving to the KSU-Next v3.2.0 base.
+# PCPU_KTHREAD is real here: this tree's fs/erofs/Kconfig defines it, unlike the
+# old branch where the same defconfig line was silently ignored.
+CONFIG_EROFS_FS_PCPU_KTHREAD=y
+CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI=y
+CONFIG_FS_IOMAP=y
+CONFIG_CPU_FREQ_TIMES=y
+CONFIG_TOUCHSCREEN_HEATMAP=m
