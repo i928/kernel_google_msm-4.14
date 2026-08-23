@@ -10,6 +10,33 @@
 #include <linux/cpuhotplug.h>
 #include <trace/events/erofs.h>
 
+#ifdef CONFIG_EROFS_FS_PCPU_KTHREAD
+#include <uapi/linux/sched/types.h>
+/*
+ * sched_set_fifo_low()/sched_set_normal() are v5.9 helpers and do not exist in
+ * 4.14. lopro's older driver copy (fs/erofs.bak/zdata.c:148) worked around this
+ * with sched_setscheduler_nocheck(SCHED_RR, prio 0) -- but SCHED_RR with
+ * sched_priority == 0 fails __sched_setscheduler()'s
+ *   rt_policy(policy) != (attr->sched_priority != 0)
+ * check with -EINVAL, and the return value is discarded, so it silently did
+ * nothing. Upstream sched_set_fifo_low() is SCHED_FIFO at priority 1.
+ */
+static inline void erofs_sched_set_fifo_low(struct task_struct *p)
+{
+	struct sched_param sp = { .sched_priority = 1 };
+
+	WARN_ON_ONCE(sched_setscheduler_nocheck(p, SCHED_FIFO, &sp));
+}
+
+static inline void erofs_sched_set_normal(struct task_struct *p, int nice)
+{
+	struct sched_param sp = { .sched_priority = 0 };
+
+	WARN_ON_ONCE(sched_setscheduler_nocheck(p, SCHED_NORMAL, &sp));
+	set_user_nice(p, nice);
+}
+#endif
+
 /*
  * since pclustersize is variable for big pcluster feature, introduce slab
  * pools implementation for different pcluster sizes.
@@ -151,9 +178,9 @@ static struct kthread_worker *erofs_init_percpu_worker(int cpu)
 	if (IS_ERR(worker))
 		return worker;
 	if (IS_ENABLED(CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI))
-		sched_set_fifo_low(worker->task);
+		erofs_sched_set_fifo_low(worker->task);
 	else
-		sched_set_normal(worker->task, 0);
+		erofs_sched_set_normal(worker->task, 0);
 	return worker;
 }
 

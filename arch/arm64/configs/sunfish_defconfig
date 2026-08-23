@@ -883,8 +883,14 @@ CONFIG_KSU_SUSFS_ENABLE_LOG=y
 # two missing helpers is ~10 lines (see memory note sunfish-erofs-lopro-two-trees).
 # Open question: lopro may have dropped the feature because it did not work, not
 # just to dodge the build error -- so treat =y as an experiment, not a fix.
-# CONFIG_EROFS_FS_PCPU_KTHREAD is not set
-# CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI is not set
+# EXPERIMENT (branch sunfish-erofs-pcpu-test): re-enabled, with the missing v5.9
+# scheduler helpers supplied as local static inlines at the top of fs/erofs/zdata.c.
+# On sunfish-ksu-v3 these are OFF because the helpers do not exist -- see the long
+# comment there. Verify on device that erofs_worker/N kthreads exist AND actually
+# run SCHED_FIFO prio 1; lopro may have dropped the feature because it did not work,
+# not merely to dodge the build error.
+CONFIG_EROFS_FS_PCPU_KTHREAD=y
+CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI=y
 CONFIG_FS_IOMAP=y
 CONFIG_CPU_FREQ_TIMES=y
 CONFIG_TOUCHSCREEN_HEATMAP=m
