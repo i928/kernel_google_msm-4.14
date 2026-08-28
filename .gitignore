@@ -135,5 +135,3 @@ kernel/configs/android-*.cfg
 #
 Android.bp
 
-# KernelSU-Next driver clone — managed by ksu_susfs/add_ksunext_susfs.sh (keeps its own .git)
-/KernelSU-Next/
