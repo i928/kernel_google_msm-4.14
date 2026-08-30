@@ -1,7 +1,7 @@
-# sunfish: plain user-installed manager APK, unmodified upstream signature
-# (Rifat Azad / KSU-Next). Same as the driver's own fallback default, kept
-# here explicitly so this doesn't silently rely on that default staying put.
-# Computed via: keytool -printcert -jarfile <manager>.apk -rfc | openssl x509
-# -outform DER | wc -c / sha256sum.
-KSU_NEXT_MANAGER_SIZE := 0x3e6
-KSU_NEXT_MANAGER_HASH := 79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7
+# sunfish: our own self-built KSU-Next manager (i928 KSU-Next Manager),
+# signed with ~/ksu-manager-build/keystore/ksu-manager-release.jks.
+# Computed via apksigner verify --print-certs + manual v2 signing-block
+# cert extraction (2048-bit RSA, minimal DN -> 746-byte DER, comfortably
+# under CERT_MAX_LENGTH).
+KSU_NEXT_MANAGER_SIZE := 0x2ea
+KSU_NEXT_MANAGER_HASH := b22ee43b209e087273ecd9fc2d2b21f0cf58df0f37ded0694d3132ef8dcc6fb4
