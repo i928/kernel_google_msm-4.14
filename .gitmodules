@@ -2,3 +2,6 @@
 	path = KernelSU-Next
 	url = git@github.com:i928/KSU-Next.git
 	branch = legacy-susfs-v2
+[submodule "fs/exfat"]
+	path = fs/exfat
+	url = https://github.com/namjaejeon/linux-exfat-oot.git
