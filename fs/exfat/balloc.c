@@ -6,6 +6,7 @@
 #include <linux/blkdev.h>
 #include <linux/slab.h>
 #include <linux/buffer_head.h>
+#include <linux/sched/signal.h>
 
 #include "exfat_fs.h"
 
