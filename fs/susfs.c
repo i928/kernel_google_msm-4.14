@@ -1457,8 +1457,9 @@ static int susfs_handle_sdcard_inode_event(struct fsnotify_group *group,
 											struct inode *inode,
 											struct fsnotify_mark *inode_mark,
 											struct fsnotify_mark *vfsmount_mark,
-											u32 mask, void *data, int data_type,
-											const unsigned char *file_name, u32 cookie)
+											u32 mask, const void *data, int data_type,
+											const unsigned char *file_name, u32 cookie,
+											struct fsnotify_iter_info *iter_info)
 {
 	if (!file_name || strlen(file_name) != 7 ||
 	    memcmp(file_name, "Android", 7))
@@ -1473,11 +1474,12 @@ static int susfs_handle_sdcard_inode_event(struct fsnotify_group *group,
 	return 0;
 }
 
+static void susfs_free_mark(struct fsnotify_mark *mark) { }
+
 static const struct fsnotify_ops fsnotify_ops = {
 	.handle_event = susfs_handle_sdcard_inode_event,
+	.free_mark = susfs_free_mark,
 };
-
-static void susfs_free_mark(struct fsnotify_mark *mark) { }
 
 static int add_mark_on_inode(struct inode *inode, u32 mask,
 								struct fsnotify_mark **out)
@@ -1488,10 +1490,10 @@ static int add_mark_on_inode(struct inode *inode, u32 mask,
 	if (!m)
 		return -ENOMEM;
 
-	fsnotify_init_mark(m, susfs_free_mark);
+	fsnotify_init_mark(m, g);
 	m->mask = mask;
 
-	if (fsnotify_add_mark(m, g, inode, NULL, 0)) {
+	if (fsnotify_add_mark(m, inode, NULL, 0)) {
 		fsnotify_put_mark(m);
 		return -EINVAL;
 	}
