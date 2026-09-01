@@ -4376,7 +4376,7 @@ static int fastrpc_cb_probe(struct device *dev)
 		sess->smmu.dev->dma_parms = devm_kzalloc(sess->smmu.dev,
 			sizeof(*sess->smmu.dev->dma_parms), GFP_KERNEL);
 	dma_set_max_seg_size(sess->smmu.dev, DMA_BIT_MASK(32));
-	dma_set_seg_boundary(sess->smmu.dev, (unsigned long)DMA_BIT_MASK(64));
+	dma_set_seg_boundary(sess->smmu.dev, ~0UL);
 
 	if (of_get_property(dev->of_node, "shared-sid", NULL) != NULL) {
 		struct fastrpc_session_ctx *new_sess;
@@ -4515,7 +4515,7 @@ static int fastrpc_cb_legacy_probe(struct device *dev)
 				sizeof(*sess->smmu.dev->dma_parms), GFP_KERNEL);
 		dma_set_max_seg_size(sess->smmu.dev, DMA_BIT_MASK(32));
 		dma_set_seg_boundary(sess->smmu.dev,
-					(unsigned long)DMA_BIT_MASK(64));
+					~0UL);
 	}
 bail:
 	kfree(sids);
