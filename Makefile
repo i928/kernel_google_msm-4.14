@@ -737,8 +737,22 @@ KBUILD_CFLAGS   += -Os
 else
 KBUILD_CFLAGS   += -O2
 ifeq ($(cc-name),clang)
-KBUILD_CFLAGS	+= -mcpu=cortex-a76 -mtune=cortex-a76 -march=armv8.2-a+dotprod
+#KBUILD_CFLAGS	+= -mcpu=cortex-a76 -mtune=cortex-a76 -march=armv8.2-a+dotprod
+KBUILD_CFLAGS   += -mcpu=cortex-a76+crypto+crc -mtune=cortex-a76 -march=armv8.2-a+lse+fp16+dotprod
 endif
+endif
+
+ifeq ($(cc-name),clang)
+# -fno-strict-aliasing is Mandatory for statically compiling KernelSU-Next and SusFS 
+#  already -fno-strict-aliasing
+# Aggressive Hardware Target 
+#KBUILD_CFLAGS   += -mcpu=cortex-a76+crypto+crc -mtune=cortex-a76 -march=armv8.2-a+lse+fp16+dotprod
+# Conserved ARMv8.2-A Target
+#KBUILD_CFLAGS	+= -mcpu=cortex-a76 -mtune=cortex-a76 -march=armv8.2-a+dotprod
+# Base Compatibility Target
+#KBUILD_CFLAGS += -O3 -march=armv8-a+crypto+crc -mtune=cortex-a76 -fno-strict-aliasing
+# Optimal Hybrid Configuration String
+#KBUILD_CFLAGS += -O3 -mcpu=cortex-a76+crypto+crc -march=armv8.2-a+lse+fp16+dotprod -fno-strict-aliasing
 endif
 
 ifdef CONFIG_CC_WERROR
