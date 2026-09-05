@@ -756,6 +756,23 @@ CONFIG_CRYPTO_AES_ARM64_CE_CCM=y
 CONFIG_CRYPTO_AES_ARM64_CE_BLK=y
 CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y
 CONFIG_XZ_DEC=y
+
+CONFIG_BLK_DEV_DM=y
+CONFIG_DM_BOW=y
+CONFIG_INCREMENTAL_FS=y
+# Randomizes the layout of core kernel structures to defeat exploits and bypass scanners
+CONFIG_GCC_PLUGIN_STRUCTLEAK=y
+CONFIG_GCC_PLUGIN_STRUCTLEAK_BYREF_ALL=y
+
+# Cleans and randomizes the kernel stack before returning from system calls
+CONFIG_GCC_PLUGIN_STACKLEAK=y
+
+# Removes the compilation path string embedding from the final kernel image
+# CONFIG_DEBUG_INFO is not set
+
+# Required for handling modern system space hiding on Android 16
+CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU=y
+
 # >>> KernelSU-Next + SUSFS >>>
 # CONFIG_KPROBES is not set  -> KSU_KPROBES_HOOK off, manual hooks active
 CONFIG_KSU=y

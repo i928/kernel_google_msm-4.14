@@ -5,6 +5,13 @@ SUBLEVEL = 357
 EXTRAVERSION = -openela
 NAME = Petit Gorille
 
+PRODUCT_PROPERTY_OVERRIDES += ro.incremental.enable=yes
+CONFIG_KSU_LSM_SECURITY_HOOKS=y
+CONFIG_LTO=y
+CONFIG_LTO_CLANG=y
+CONFIG_THINLTO=y
+
+
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
 # More info can be located in ./README
@@ -738,6 +745,8 @@ else
 KBUILD_CFLAGS   += -O2
 ifeq ($(cc-name),clang)
 KBUILD_CFLAGS	+= -mcpu=cortex-a76 -mtune=cortex-a76 -march=armv8.2-a+dotprod
+#KBUILD_CFLAGS   += -mcpu=cortex-a76+crypto+crc -march=armv8.2-a+lse+fp16+dotprod -mtune=cortex-a76
+#KBUILD_CFLAGS   += -mcpu=cortex-a76+crypto+crc -march=armv8.2-a+lse+fp16+dotprod 
 endif
 endif
 
