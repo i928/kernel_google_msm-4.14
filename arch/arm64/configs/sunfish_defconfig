@@ -759,7 +759,7 @@ CONFIG_XZ_DEC=y
 # >>> KernelSU-Next + SUSFS >>>
 # CONFIG_KPROBES is not set  -> KSU_KPROBES_HOOK off, manual hooks active
 CONFIG_KSU=y
-CONFIG_KSU_LSM_SECURITY_HOOKS=y
+CONFIG_KSU_MANUAL_HOOK=y
 CONFIG_KSU_SUSFS=y
 # KernelSU-Next implements magic mount:
 CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
