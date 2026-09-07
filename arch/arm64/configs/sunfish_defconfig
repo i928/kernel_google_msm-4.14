@@ -855,7 +855,11 @@ CONFIG_KSU=y
 CONFIG_KSU_MANUAL_HOOK=y
 CONFIG_KSU_SUSFS=y
 # KernelSU-Next implements magic mount:
-CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
+# CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y -- DEAD, no Kconfig defines it. Obsolete in
+# susfs v2.1.0: the guards it fed lived in susfs_auto_add_try_umount_for_bind_mount(),
+# which v2.1.0 removed (try_umount paths are now added from userspace). lopro still
+# has it because he is on susfs v1.5.12. Kept commented so it is not re-added by a
+# diff against lopro/abu.
 CONFIG_KSU_SUSFS_SUS_PATH=y
 CONFIG_KSU_SUSFS_SUS_MOUNT=y
 CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
