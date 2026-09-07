@@ -737,7 +737,8 @@ KBUILD_CFLAGS   += -Os
 else
 KBUILD_CFLAGS   += -O2
 ifeq ($(cc-name),clang)
-KBUILD_CFLAGS	+= -mcpu=cortex-a76 -mtune=cortex-a76 -march=armv8.2-a+dotprod
+#KBUILD_CFLAGS	+= -mcpu=cortex-a76 -mtune=cortex-a76 -march=armv8.2-a+dotprod
+KBUILD_CFLAGS	+= -mcpu=cortex-a76+crypto+crc -mtune=cortex-a76 -march=armv8.2-a+lse+fp16+dotprod
 endif
 endif
 
