@@ -693,7 +693,6 @@ void qdf_trace_dump_all(void *p_mac, uint8_t code, uint8_t session,
 qdf_export_symbol(qdf_trace_dump_all);
 #endif
 
-#endif /* WLAN_DEBUG -- memdump callbacks are needed even when trace is off */
 #ifdef WLAN_FEATURE_MEMDUMP_ENABLE
 /**
  * qdf_register_debugcb_init() - initializes debug callbacks
@@ -759,7 +758,6 @@ QDF_STATUS qdf_state_info_dump_all(char *buf, uint16_t size,
 }
 qdf_export_symbol(qdf_state_info_dump_all);
 #endif
-#ifdef WLAN_DEBUG
 
 #ifdef CONFIG_DP_TRACE
 #define QDF_DP_TRACE_PREPEND_STR_SIZE 100
