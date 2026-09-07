@@ -827,8 +827,22 @@ CONFIG_EROFS_FS_ZIP=y
 CONFIG_EROFS_FS_XATTR=y
 CONFIG_EROFS_FS_POSIX_ACL=y
 CONFIG_EROFS_FS_SECURITY=y
-CONFIG_EROFS_FS_PCPU_KTHREAD=y
-CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI=y
+# EROFS per-cpu decompression kthreads: deliberately OFF, matching lopro.
+# Measured 2026-09-07 with an A/B/A on this device (erofs_bench.sh: read the
+# three largest APKs off the EROFS /product with drop_caches before every read,
+# 5 reps per arm, arms matched at ~35s uptime from a fresh boot):
+#   Youtube.apk  ON 251.7  OFF 291.4 MB/s
+#   tether.apk   ON 241.6  OFF 244.4 MB/s
+#   map.apk      ON 186.6  OFF 183.3 MB/s   <- ON faster here
+# Mixed signs, and the within-run spread was 26-47% -- far larger than any
+# between-arm gap. No measurable benefit. Leaving it off avoids 8 SCHED_FIFO
+# prio-1 kthreads competing on this SoC's little cores.
+# The feature itself does work when enabled (8 erofs_worker/N threads, SCHED_FIFO
+# confirmed); it simply buys nothing on 4.14. Re-test with erofs_bench.sh before
+# turning it back on, and always A/B/A -- a single-arm comparison here reported a
+# bogus +98% because one arm ran on a warm device.
+# CONFIG_EROFS_FS_PCPU_KTHREAD=y
+# CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI=y
 CONFIG_LZ4_DECOMPRESS=y
 #Ramoops
 CONFIG_PSTORE=y
