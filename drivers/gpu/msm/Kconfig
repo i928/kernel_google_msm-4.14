@@ -9,6 +9,13 @@ config QCOM_KGSL
 	select DEVFREQ_GOV_PERFORMANCE
 	select DEVFREQ_GOV_QCOM_ADRENO_TZ
 	select DEVFREQ_GOV_QCOM_GPUBW_MON
+	# TRACE_GPU_MEM is a promptless bool, so it cannot be set from a defconfig;
+	# it must be select'ed. abu-adm dropped this select, but the VINTF framework
+	# compatibility matrix (FCM level 6, kernel/configs/s/android-4.14/
+	# android-base.config) requires CONFIG_TRACE_GPU_MEM=y, so check_vintf fails
+	# at packaging without it. init/Kconfig.gki also selects it, but that path is
+	# GKI-only and never taken on this non-GKI build.
+	select TRACE_GPU_MEM
 	---help---
 	  3D graphics driver for the Adreno family of GPUs from QTI.
 	  Required to use hardware accelerated OpenGL, compute and Vulkan

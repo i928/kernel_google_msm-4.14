@@ -208,7 +208,11 @@ source "drivers/thunderbolt/Kconfig"
 
 source "drivers/android/Kconfig"
 
-#source "drivers/gpu/trace/Kconfig"
+# Must stay sourced: it DEFINES config TRACE_GPU_MEM. abu-adm commented this
+# out, which makes the symbol nonexistent -- so neither a defconfig line nor
+# QCOM_KGSL's `select TRACE_GPU_MEM` can enable it, and check_vintf then fails
+# with "Missing config CONFIG_TRACE_GPU_MEM" (FCM level 6 requirement).
+source "drivers/gpu/trace/Kconfig"
 
 source "drivers/nvdimm/Kconfig"
 
