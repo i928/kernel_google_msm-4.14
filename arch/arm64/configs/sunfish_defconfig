@@ -865,6 +865,29 @@ CONFIG_F2FS_FS_COMPRESSION=y
 CONFIG_F2FS_FS_LZ4=y
 # >>> KernelSU-Next + SUSFS >>>
 # CONFIG_KPROBES is not set  -> KSU_KPROBES_HOOK off, manual hooks active
+#
+# kprobe hooking is IMPOSSIBLE on this kernel -- established 2026-09-08, branch
+# "kprobe", without needing a build. Prompted by apelete's kernelsu-23.0
+# (adb61bda637b "kernelsu: Update build for kernelsu kprobe support").
+#
+#   config KRETPROBES
+#       def_bool y
+#       depends on KPROBES && HAVE_KRETPROBES && ROP_PROTECTION_NONE   (arch/Kconfig:178)
+#
+# ROP_PROTECTION_NONE is one option of a choice group whose other member is
+# SHADOW_CALL_STACK, and we run CONFIG_SHADOW_CALL_STACK=y. So KRETPROBES can never
+# be set, and KernelSU-Next's KSU_KPROBES_HOOK -- which "depends on KRETPROBES &&
+# KPROBES && HAVE_SYSCALL_TRACEPOINTS" -- is unreachable. Setting CONFIG_KPROBES=y
+# alone does NOT help: it leaves KSU with neither manual hooks nor kprobe hooks.
+#
+# Enabling it would mean giving up Shadow Call Stack (ROP hardening), and apelete
+# additionally disables LTO and CFI in build.config.no-cfi. KernelSU-Next's own
+# Kconfig says of this hook: "This should not be used on kernel below 5.10."
+# Manual hooks already work here. Not worth the trade.
+#
+# NB apelete's commit also patches arch/Kconfig "bool" -> "bool y" for
+# HAVE_KPROBES/HAVE_KRETPROBES. Unnecessary for us: arch/arm64/Kconfig:146 already
+# selects both, and CONFIG_HAVE_KPROBES=y is in our built config.
 CONFIG_KSU=y
 CONFIG_KSU_MANUAL_HOOK=y
 CONFIG_KSU_SUSFS=y
