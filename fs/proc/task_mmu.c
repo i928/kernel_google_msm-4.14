@@ -1718,7 +1718,26 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 		if (end < start_vaddr || end > end_vaddr)
 			end = end_vaddr;
 		down_read(&mm->mmap_sem);
+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
+		{
+			/*
+			 * Hide a sus_map from /proc/<pid>/pagemap: if this range
+			 * starts inside a flagged vma, skip the walk so no PTE/pfn
+			 * entries are emitted for it (report success, write nothing
+			 * -- matching the other SUS_MAP /proc paths).
+			 */
+			struct vm_area_struct *sus_vma = find_vma(mm, start_vaddr);
+
+			if (sus_vma && start_vaddr >= sus_vma->vm_start &&
+			    sus_vma->vm_file &&
+			    SUSFS_IS_INODE_SUS_MAP(file_inode(sus_vma->vm_file)))
+				ret = 0;
+			else
+				ret = walk_page_range(start_vaddr, end, &pagemap_walk);
+		}
+#else
 		ret = walk_page_range(start_vaddr, end, &pagemap_walk);
+#endif
 		up_read(&mm->mmap_sem);
 		start_vaddr = end;
 
