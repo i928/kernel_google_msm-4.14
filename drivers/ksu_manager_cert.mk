@@ -19,4 +19,11 @@ KSU_NEXT_MANAGER_HASH := b22ee43b209e087273ecd9fc2d2b21f0cf58df0f37ded0694d3132e
 # via a per-commit mini-bisect after an earlier report of a hang -- the hang
 # did not reproduce on retest, consistent with the known pervasive
 # intermittent boot issue, not this fix).
-KSU_MANAGER_PACKAGE := com.rifsxd.ksunext
+#
+# Renamed 2026-09-09 from com.rifsxd.ksunext to a neutral package so root/manager
+# detectors (duck detector) that key on the well-known KernelSU-Next package name
+# no longer find the baked manager. Must match the manager APK's applicationId
+# (build.gradle.kts). The code namespace stays com.rifsxd.ksunext; only the
+# installed package id changed. NOT com.android.*/com.google.* -- a system-named
+# package signed with a non-platform key is itself a detection tell.
+KSU_MANAGER_PACKAGE := dev.i928.mgr
