@@ -2410,6 +2410,12 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
 	 */
 
 	for (vma = mm->mmap, pos = 2; vma; vma = vma->vm_next) {
+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
+		/* hide sus_maps; keep this count consistent with the passes below */
+		if (vma->vm_file &&
+		    SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file)))
+			continue;
+#endif
 		if (vma->vm_file && ++pos > ctx->pos)
 			nr_files++;
 	}
@@ -2430,6 +2436,10 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
 				vma = vma->vm_next) {
 			if (!vma->vm_file)
 				continue;
+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
+			if (SUSFS_IS_INODE_SUS_MAP(file_inode(vma->vm_file)))
+				continue;
+#endif
 			if (++pos <= ctx->pos)
 				continue;
 
