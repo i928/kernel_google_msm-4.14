@@ -884,6 +884,9 @@ CONFIG_KSU_SUSFS_SUS_MOUNT=y
 # Enabling it would be an undefined-reference LINK error, not merely inert.
 CONFIG_KSU_SUSFS_SUS_KSTAT=y
 CONFIG_KSU_SUSFS_SUS_MAP=y
+# sus_memfd is implemented on this branch (port of sidex15 bc23096); enabled here
+# for the Y feature test. Drop this line to keep it default-n if merging to a16.
+CONFIG_KSU_SUSFS_SUS_MEMFD=y
 CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y
 CONFIG_KSU_SUSFS_TRY_UMOUNT=y
 # CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y -- DEAD. No Kconfig defines it, and susfs v2.1.0 deleted
