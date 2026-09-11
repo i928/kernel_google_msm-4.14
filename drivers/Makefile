@@ -194,3 +194,6 @@ obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_GNSS_SIRF)		+= gnsssirf/
 
 obj-$(CONFIG_KSU) += kernelsu/
+
+# Inject the configuration macro into all C files in this directory
+ccflags-y += -DCONFIG_KSU_LSM_SECURITY_HOOKS
