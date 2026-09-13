@@ -389,3 +389,22 @@
 	qcom,force-warm-reboot-on-thermal-shutdown;
 	qcom,force-warm-reboot-on-reboot-ab-update;
 };
+
+&soc {
+    imem@146bf000 {
+        compatible = "syscon", "simple-mfd";
+        reg = <0x146bf000 0x1000>;
+
+        /* Add or verify missing download mode targets if supported by your bootloader */
+        dload_mode@0 {
+            compatible = "qcom,msm-imem-dload-mode";
+            reg = <0x0 0x8>;
+        };
+
+        edload_mode@8 {
+            compatible = "qcom,msm-imem-edload-mode";
+            reg = <0x8 0x8>;
+        };
+    };
+};
+
