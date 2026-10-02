@@ -73,22 +73,19 @@ CONFIG_SECCOMP=y
 CONFIG_FS_IOMAP=y
 CONFIG_EROFS_FS=y
 CONFIG_EROFS_FS_ZIP=y
-# EROFS per-cpu decompression kthreads: deliberately OFF, matching lopro.
-# Measured 2026-09-07 with an A/B/A on this device (erofs_bench.sh: read the
-# three largest APKs off the EROFS /product with drop_caches before every read,
-# 5 reps per arm, arms matched at ~35s uptime from a fresh boot):
-#   Youtube.apk  ON 251.7  OFF 291.4 MB/s
-#   tether.apk   ON 241.6  OFF 244.4 MB/s
-#   map.apk      ON 186.6  OFF 183.3 MB/s   <- ON faster here
-# Mixed signs, and the within-run spread was 26-47% -- far larger than any
-# between-arm gap. No measurable benefit. Leaving it off avoids 8 SCHED_FIFO
-# prio-1 kthreads competing on this SoC's little cores.
-# The feature itself does work when enabled (8 erofs_worker/N threads, SCHED_FIFO
-# confirmed); it simply buys nothing on 4.14. Re-test with erofs_bench.sh before
-# turning it back on, and always A/B/A -- a single-arm comparison here reported a
-# bogus +98% because one arm ran on a warm device.
-# CONFIG_EROFS_FS_PCPU_KTHREAD=y
-# CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI=y
+# EROFS per-cpu decompression kthreads (CONFIG_EROFS_FS_PCPU_KTHREAD{,_HIPRI},
+# set ON in the File systems section below). They target scheduling latency of
+# decompression work, not throughput. Measured 2026-09-28..29 with
+# erofs_bench.sh v2 (tracefs work-ready -> running during 20 cold launches each
+# of freenovel/texexpress/thsrc, plus fio and dd), regular and performance
+# compiler builds:
+#                 median     p95      max
+#   pcpu ON     14-18 us  59-73 us  1.8-3.5 ms
+#   pcpu OFF     7-9 us  257-338 us 3.5-9.5 ms   (workqueue)
+# ON cuts the tail ~4-5x for a slightly higher median. App launch (thsrc
+# 597-660 vs 645-662 ms), dd and fio show no measurable difference either way.
+# Kept ON. (The 2026-09-07 throughput-only A/B that left it off measured the
+# wrong thing: dd spread was larger than any gap.) Reports: ~/ksu/erofs-bench-*.
 # CONFIG_UNMAP_KERNEL_AT_EL0 is not set
 CONFIG_HARDEN_BRANCH_PREDICTOR=y
 CONFIG_PRINT_VMEMLAYOUT=y
