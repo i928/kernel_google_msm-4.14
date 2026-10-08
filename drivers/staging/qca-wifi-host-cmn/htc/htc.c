@@ -251,11 +251,6 @@ int htc_runtime_resume(HTC_HANDLE htc_ctx)
 static inline void htc_runtime_pm_init(HTC_TARGET *target) { }
 #endif
 
-static struct lock_class_key htc_lock_key;
-static struct lock_class_key htc_rx_lock_key;
-static struct lock_class_key htc_tx_lock_key;
-static struct lock_class_key htc_lookup_queue_lock_key;
-
 /* registered target arrival callback from the HIF layer */
 HTC_HANDLE htc_create(void *ol_sc, struct htc_init_info *pInfo,
 			qdf_device_t osdev, uint32_t con_mode)
@@ -284,19 +279,9 @@ HTC_HANDLE htc_create(void *ol_sc, struct htc_init_info *pInfo,
 	qdf_spinlock_create(&target->HTCLock);
 	qdf_spinlock_create(&target->HTCRxLock);
 	qdf_spinlock_create(&target->HTCTxLock);
-	/*
-	 * qdf_spinlock_create() inits all locks of one file with one lockdep
-	 * class, so htc_lookup_tx_packet() (lookup_queue_lock -> HTCTxLock)
-	 * looked like recursive locking. Separate classes (no-op w/o LOCKDEP).
-	 */
-	lockdep_set_class(&target->HTCLock.lock.spinlock, &htc_lock_key);
-	lockdep_set_class(&target->HTCRxLock.lock.spinlock, &htc_rx_lock_key);
-	lockdep_set_class(&target->HTCTxLock.lock.spinlock, &htc_tx_lock_key);
 	for (i = 0; i < ENDPOINT_MAX; i++) {
 		pEndpoint = &target->endpoint[i];
 		qdf_spinlock_create(&pEndpoint->lookup_queue_lock);
-		lockdep_set_class(&pEndpoint->lookup_queue_lock.lock.spinlock,
-				  &htc_lookup_queue_lock_key);
 	}
 	target->is_nodrop_pkt = false;
 	target->htc_hdr_length_check = false;
